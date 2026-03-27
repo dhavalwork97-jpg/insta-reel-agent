@@ -103,8 +103,9 @@ export async function editVideo({
   }
 
   await ff.exec(command);
-  const data = await ff.readFile("output.mp4");
-  return new Blob([data as Uint8Array], { type: "video/mp4" });
+const data = await ff.readFile("output.mp4");
+const uint8 = data instanceof Uint8Array ? data : new Uint8Array(data as ArrayBuffer);
+return new Blob([uint8.buffer as ArrayBuffer], { type: "video/mp4" });
 }
 
 export async function extractFrame(file: File): Promise<string> {
@@ -120,10 +121,9 @@ export async function extractFrame(file: File): Promise<string> {
     "-q:v", "5",
     "frame.jpg",
   ]);
-
-  const frameData = await ff.readFile("frame.jpg");
-  const blob = new Blob([frameData as Uint8Array], { type: "image/jpeg" });
-
+const frameData = await ff.readFile("frame.jpg");
+const frameUint8 = frameData instanceof Uint8Array ? frameData : new Uint8Array(frameData as ArrayBuffer);
+const blob = new Blob([frameUint8.buffer as ArrayBuffer], { type: "image/jpeg" });
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onloadend = () => {
