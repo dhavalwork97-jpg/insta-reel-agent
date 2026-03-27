@@ -16,6 +16,18 @@ export async function loadFFmpeg(): Promise<FFmpeg> {
   return ffmpeg;
 }
 
+// Safely convert whatever ffmpeg.readFile returns into a Blob
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toBlob(data: any, mimeType: string): Blob {
+  if (data instanceof Uint8Array) {
+    return new Blob([data], { type: mimeType });
+  }
+  if (data instanceof ArrayBuffer) {
+    return new Blob([data], { type: mimeType });
+  }
+  return new Blob([], { type: mimeType });
+}
+
 export type Template = "reels-crop" | "zoom-pulse" | "glitch" | "beat-sync";
 
 export interface EditOptions {
@@ -42,7 +54,6 @@ export async function editVideo({
 
   switch (template) {
     case "reels-crop":
-      // Crop to 9:16, scale to 1080x1920
       command = [
         "-i", "input.mp4",
         "-vf", "crop=ih*9/16:ih,scale=1080:1920,setsar=1",
@@ -57,7 +68,6 @@ export async function editVideo({
       break;
 
     case "zoom-pulse":
-      // 9:16 crop + animated zoom pulse every 2s
       command = [
         "-i", "input.mp4",
         "-vf",
@@ -72,7 +82,6 @@ export async function editVideo({
       break;
 
     case "glitch":
-      // 9:16 crop + RGB split glitch effect
       command = [
         "-i", "input.mp4",
         "-vf",
@@ -87,7 +96,6 @@ export async function editVideo({
       break;
 
     case "beat-sync":
-      // 9:16 crop + contrast/brightness flash effect simulating beat drops
       command = [
         "-i", "input.mp4",
         "-vf",
@@ -103,9 +111,9 @@ export async function editVideo({
   }
 
   await ff.exec(command);
-const data = await ff.readFile("output.mp4");
-const uint8 = data instanceof Uint8Array ? data : new Uint8Array(data as ArrayBuffer);
-return new Blob([uint8.buffer as ArrayBuffer], { type: "video/mp4" });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = await ff.readFile("output.mp4");
+  return toBlob(data, "video/mp4");
 }
 
 export async function extractFrame(file: File): Promise<string> {
@@ -121,9 +129,11 @@ export async function extractFrame(file: File): Promise<string> {
     "-q:v", "5",
     "frame.jpg",
   ]);
-const frameData = await ff.readFile("frame.jpg");
-const frameUint8 = frameData instanceof Uint8Array ? frameData : new Uint8Array(frameData as ArrayBuffer);
-const blob = new Blob([frameUint8.buffer as ArrayBuffer], { type: "image/jpeg" });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const frameData: any = await ff.readFile("frame.jpg");
+  const blob = toBlob(frameData, "image/jpeg");
+
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onloadend = () => {
